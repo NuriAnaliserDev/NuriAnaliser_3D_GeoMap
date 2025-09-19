@@ -1,0 +1,164 @@
+:root {
+  --bg: linear-gradient(135deg, #0f172a, #1e293b);
+  --card: rgba(255, 255, 255, 0.05);
+  --pill: rgba(255, 255, 255, 0.08);
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --success: #22c55e;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  margin: 0;
+  padding: 30px;
+}
+
+.container {
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  width: 100%;
+  max-width: 520px;
+}
+
+h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+
+.inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.point-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr 1fr;
+  gap: 12px;
+  align-items: center;
+}
+
+.point-label {
+  font-weight: bold;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.input {
+  background: var(--pill);
+  border: none;
+  padding: 12px 14px;
+  border-radius: 12px;
+  color: #fff;
+  outline: none;
+  font-size: 15px;
+  box-shadow: inset 0 -3px 6px rgba(0, 0, 0, 0.4);
+  transition: 0.2s ease;
+  width: 100%;
+  min-width: 0;
+}
+
+.input:focus {
+  outline: 2px solid var(--primary);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.button {
+  width: 100%;
+  padding: 14px;
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+  transition: 0.2s ease-in-out;
+}
+
+.button:hover {
+  background: var(--primary-hover);
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.5);
+}
+
+.error {
+  color: #ff3b30;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.result {
+  margin-top: 18px;
+  background: var(--pill);
+  backdrop-filter: blur(8px);
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.result h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--success);
+  margin-top: 0;
+}
+
+.result p {
+  margin: 6px 0;
+  font-size: 0.95rem;
+}
+
+.result-footer {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+/* --- DOWNLOAD BUTTONS --- */
+.download-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.download-buttons a button {
+  background: var(--pill);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.9rem;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+.download-buttons a button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.05);
+}
