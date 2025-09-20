@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timezone
 from backend.database import db, init_indexes
 import io
@@ -9,6 +10,8 @@ import pandas as pd
 import numpy as np
 from fastapi.responses import StreamingResponse, JSONResponse
 from bson import ObjectId
+import hashlib
+import secrets
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
@@ -43,14 +46,87 @@ class ThreePointInput(BaseModel):
     project_id: str
     points: List[Point]
 
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+# ==== AUTH FUNCTIONS ====
+security = HTTPBearer()
+
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password: str, hashed: str) -> bool:
+    return hash_password(password) == hashed
+
+def create_token() -> str:
+    return secrets.token_urlsafe(32)
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
+    user = await db.users.find_one({"token": token})
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
 # ==== ENDPOINTLAR ====
 
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
 
+@app.post("/api/auth/register", response_model=Token)
+async def register(user: UserCreate):
+    # Foydalanuvchi mavjudligini tekshirish
+    existing_user = await db.users.find_one({"username": user.username})
+    if existing_user:
+        raise HTTPException(400, detail="Username already registered")
+    
+    # Yangi foydalanuvchi yaratish
+    hashed_password = hash_password(user.password)
+    token = create_token()
+    
+    user_data = {
+        "username": user.username,
+        "password": hashed_password,
+        "token": token,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.insert_one(user_data)
+    
+    return {"access_token": token, "token_type": "bearer"}
+
+@app.post("/api/auth/login", response_model=Token)
+async def login(user: UserLogin):
+    # Foydalanuvchini topish
+    db_user = await db.users.find_one({"username": user.username})
+    if not db_user or not verify_password(user.password, db_user["password"]):
+        raise HTTPException(401, detail="Invalid username or password")
+    
+    # Yangi token yaratish
+    token = create_token()
+    await db.users.update_one(
+        {"username": user.username}, 
+        {"$set": {"token": token}}
+    )
+    
+    return {"access_token": token, "token_type": "bearer"}
+
 @app.post("/api/projects")
-async def create_project(data: ProjectCreate):
+async def create_project(data: ProjectCreate, current_user = Depends(get_current_user)):
     new_project = {
         "name": data.name,
         "description": data.description,
@@ -60,7 +136,7 @@ async def create_project(data: ProjectCreate):
     return {"id": str(result.inserted_id), "message": "Project created"}
 
 @app.get("/api/projects")
-async def list_projects():
+async def list_projects(current_user = Depends(get_current_user)):
     projects = []
     async for p in db.projects.find({}).sort("created_at", -1):
         p["_id"] = str(p["_id"])
@@ -68,7 +144,7 @@ async def list_projects():
     return projects
 
 @app.post("/api/analyze/three-point")
-async def three_point(data: ThreePointInput):
+async def three_point(data: ThreePointInput, current_user = Depends(get_current_user)):
     if len(data.points) != 3:
         raise HTTPException(400, detail="Exactly 3 points required.")
 
@@ -93,8 +169,63 @@ async def three_point(data: ThreePointInput):
     result["_id"] = str(insert_result.inserted_id)
     return result
 
+@app.post("/api/analyze/upload-csv")
+async def upload_csv(file: UploadFile = File(...), project_id: str = "default", current_user = Depends(get_current_user)):
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(400, detail="Faqat CSV fayllar qabul qilinadi")
+    
+    try:
+        # CSV faylni o'qish
+        contents = await file.read()
+        df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
+        
+        # CSV formatini tekshirish (x, y, z ustunlari kerak)
+        required_columns = ['x', 'y', 'z']
+        if not all(col in df.columns for col in required_columns):
+            raise HTTPException(400, detail="CSV faylda x, y, z ustunlari bo'lishi kerak")
+        
+        results = []
+        
+        # Har 3 ta qatorni guruhlab, nuqtalarni hisoblash
+        for i in range(0, len(df) - 2, 3):
+            if i + 2 < len(df):
+                points = [
+                    {"x": float(df.iloc[i]['x']), "y": float(df.iloc[i]['y']), "z": float(df.iloc[i]['z'])},
+                    {"x": float(df.iloc[i+1]['x']), "y": float(df.iloc[i+1]['y']), "z": float(df.iloc[i+1]['z'])},
+                    {"x": float(df.iloc[i+2]['x']), "y": float(df.iloc[i+2]['y']), "z": float(df.iloc[i+2]['z'])}
+                ]
+                
+                # Strike, dip hisoblash
+                p1, p2, p3 = np.array([[p['x'], p['y'], p['z']] for p in points])
+                v1, v2 = p2 - p1, p3 - p1
+                normal = np.cross(v1, v2)
+                
+                strike = (np.degrees(np.arctan2(normal[1], normal[0])) + 360) % 360
+                dip = np.degrees(np.arccos(abs(normal[2]) / np.linalg.norm(normal)))
+                dip_direction = (strike + 90) % 360
+                
+                result = {
+                    "project_id": project_id,
+                    "strike": round(strike, 2),
+                    "dip": round(dip, 2),
+                    "dip_direction": round(dip_direction, 2),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "points": points
+                }
+                
+                await db.reports.insert_one(result)
+                results.append(result)
+        
+        return {
+            "message": f"{len(results)} ta natija hisoblandi va saqlandi",
+            "results": results
+        }
+        
+    except Exception as e:
+        raise HTTPException(400, detail=f"CSV faylni qayta ishlashda xatolik: {str(e)}")
+
 @app.get("/api/results")
-async def get_results():
+async def get_results(current_user = Depends(get_current_user)):
     results = []
     async for r in db.reports.find({}).sort("created_at", -1):
         r["_id"] = str(r["_id"])
