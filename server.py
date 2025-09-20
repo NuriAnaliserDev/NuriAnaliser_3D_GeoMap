@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from bson import ObjectId
 import hashlib
 import secrets
+from backend.services.geological_analysis import calculate_structural_elements, create_geological_section, analyze_stratigraphic_column
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
@@ -223,6 +224,72 @@ async def upload_csv(file: UploadFile = File(...), project_id: str = "default", 
         
     except Exception as e:
         raise HTTPException(400, detail=f"CSV faylni qayta ishlashda xatolik: {str(e)}")
+
+@app.post("/api/analyze/structural-elements")
+async def analyze_structural_elements(data: ThreePointInput, current_user = Depends(get_current_user)):
+    """Qatlamning barcha strukturaviy elementlarini hisoblash"""
+    if len(data.points) != 3:
+        raise HTTPException(400, detail="Exactly 3 points required.")
+    
+    try:
+        points = [[p.x, p.y, p.z] for p in data.points]
+        elements = calculate_structural_elements(points)
+        
+        result = {
+            "project_id": data.project_id,
+            "structural_elements": elements,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.reports.insert_one(result)
+        return result
+        
+    except Exception as e:
+        raise HTTPException(400, detail=f"Strukturaviy tahlil xatoligi: {str(e)}")
+
+@app.post("/api/analyze/geological-section")
+async def create_section(data: dict, current_user = Depends(get_current_user)):
+    """Geologik kesma yaratish"""
+    points = data.get("points")
+    section_azimuth = data.get("section_azimuth", 0)
+    
+    if not points or len(points) != 3:
+        raise HTTPException(400, detail="Exactly 3 points required.")
+    
+    try:
+        section_data = create_geological_section(points, section_azimuth)
+        
+        result = {
+            "project_id": data.get("project_id", "default"),
+            "section_data": section_data,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.reports.insert_one(result)
+        return result
+        
+    except Exception as e:
+        raise HTTPException(400, detail=f"Kesma yaratish xatoligi: {str(e)}")
+
+@app.post("/api/analyze/stratigraphic")
+async def analyze_stratigraphy(data: dict, current_user = Depends(get_current_user)):
+    """Stratigrafik ustun tahlili"""
+    layers_data = data.get("layers", [])
+    
+    try:
+        analysis = analyze_stratigraphic_column(layers_data)
+        
+        result = {
+            "project_id": data.get("project_id", "default"),
+            "stratigraphic_analysis": analysis,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        await db.reports.insert_one(result)
+        return result
+        
+    except Exception as e:
+        raise HTTPException(400, detail=f"Stratigrafik tahlil xatoligi: {str(e)}")
 
 @app.get("/api/results")
 async def get_results(current_user = Depends(get_current_user)):
