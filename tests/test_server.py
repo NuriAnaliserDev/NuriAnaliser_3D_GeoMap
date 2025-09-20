@@ -14,17 +14,18 @@ async def test_health_check():
 
 
 @pytest.mark.asyncio
-async def test_generate_report():
+async def test_three_point_analysis():
     payload = {
+        "project_id": "test_project",
         "points": [
-            [0, 0, 100],
-            [10, 0, 120],
-            [0, 10, 110]
+            {"x": 0, "y": 0, "z": 100},
+            {"x": 10, "y": 0, "z": 120},
+            {"x": 0, "y": 10, "z": 110}
         ]
     }
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.post("/api/generate-report", json=payload)
+        resp = await ac.post("/api/analyze/three-point", json=payload)
 
     assert resp.status_code == 200, f"Xato javob: {resp.text}"
     data = resp.json()
@@ -33,22 +34,23 @@ async def test_generate_report():
     assert "dip_direction" in data
 
 @pytest.mark.asyncio
-async def test_generate_report_invalid_points():
+async def test_three_point_invalid_points():
     """
     Bu test noto'g'ri nuqtalar soni yuborilganda 400 xatolik qaytishini tekshiradi.
     """
     payload = {
+        "project_id": "test_project",
         "points": [
-            [0, 0, 100],
-            [10, 0, 120]
+            {"x": 0, "y": 0, "z": 100},
+            {"x": 10, "y": 0, "z": 120}
         ]
     }
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.post("/api/generate-report", json=payload)
+        resp = await ac.post("/api/analyze/three-point", json=payload)
 
     assert resp.status_code == 400, f"422 yoki 500 chiqdi: {resp.text}"
     data = resp.json()
     # ✅ Backend qaytargan xabarning "detail" maydonini tekshiramiz
     assert "detail" in data
-    assert "3 ta nuqta" in data["detail"]
+    assert "3 points required" in data["detail"]

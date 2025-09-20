@@ -20,7 +20,9 @@ export default function InputForm({ onSubmit, loading, error }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     const allValues = Object.values(points).flatMap((p) => [p.x, p.y, p.z]);
-    if (allValues.some((v) => v === "")) return alert("❌ Barcha nuqtalar to‘ldirilishi shart!");
+    if (allValues.some((v) => v === "")) {
+      return alert("❌ Barcha nuqtalar to‘ldirilishi shart!");
+    }
 
     const payload = [
       [Number(points.p1.x), Number(points.p1.y), Number(points.p1.z)],

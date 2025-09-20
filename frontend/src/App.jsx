@@ -3,6 +3,7 @@ import "./styles.css";
 import InputForm from "./components/InputForm";
 import ResultCard from "./components/ResultCard";
 import HistoryList from "./components/HistoryList";
+import DownloadButtons from "./components/DownloadButtons";
 
 export default function App() {
   const [history, setHistory] = useState([]);
@@ -26,7 +27,7 @@ export default function App() {
     setLoading(true);
     setLatestReport(null);
 
-    // 🔧 To'g'ri formatga o'tkazish
+    // Backend uchun payload format
     const payload = {
       project_id: "default",
       points: pointsArray.map(([x, y, z]) => ({ x, y, z }))
@@ -39,9 +40,11 @@ export default function App() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error("Backend xatolik qaytardi!");
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`Backend xatolik qaytardi! Status: ${response.status}`);
+      }
 
+      const data = await response.json();
       setLatestReport(data);
       saveToHistory(data);
     } catch (err) {
@@ -59,6 +62,7 @@ export default function App() {
 
       <InputForm onSubmit={handleGenerateReport} loading={loading} error={error} />
       {latestReport && <ResultCard report={latestReport} />}
+      <DownloadButtons />
       <HistoryList history={history} />
     </div>
   );

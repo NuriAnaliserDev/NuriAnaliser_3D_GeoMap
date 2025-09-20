@@ -12,6 +12,6 @@ async def init_indexes():
     # Projects
     await db.projects.create_index([("created_at", ASCENDING)])
     await db.projects.create_index([("name", ASCENDING)], unique=False)
-    # Results
-    await db.results.create_index([("timestamp", ASCENDING)])
-    await db.results.create_index([("project_id", ASCENDING)])
+    # Reports (results o'rniga)
+    await db.reports.create_index([("created_at", ASCENDING)])
+    await db.reports.create_index([("project_id", ASCENDING)])

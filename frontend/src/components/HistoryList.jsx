@@ -6,7 +6,7 @@ export default function HistoryList({ history }) {
       <h3>📜 Tarix</h3>
       {history.map((item, idx) => (
         <div key={idx}>
-          <p><strong>{item.timestamp ? new Date(item.timestamp).toLocaleString() : "???"}</strong></p>
+          <p><strong>{item.created_at ? new Date(item.created_at).toLocaleString() : "???"}</strong></p>
           <p>
             Strike: {item.strike?.toFixed(2) ?? 0}°, 
             Dip: {item.dip?.toFixed(2) ?? 0}°, 
