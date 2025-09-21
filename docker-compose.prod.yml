@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: nuri3d_mongodb_prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27017:27017"  # Only localhost access
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: nuri_section_db
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - nuri3d_network
+    # Security: no external access
+    command: mongod --bind_ip_all --auth
+
+  # Backend FastAPI
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: nuri3d_backend_prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"  # Only localhost access
+    environment:
+      MONGO_URL: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017/nuri_section_db?authSource=admin
+      PYTHONPATH: /app
+      ENVIRONMENT: production
+    depends_on:
+      - mongodb
+    networks:
+      - nuri3d_network
+    # Security: no external access
+
+  # Frontend React
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nuri3d_frontend_prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:80"  # Only localhost access
+    depends_on:
+      - backend
+    networks:
+      - nuri3d_network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nuri3d_nginx_prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - nuri3d_network
+
+volumes:
+  mongodb_data:
+
+networks:
+  nuri3d_network:
+    driver: bridge

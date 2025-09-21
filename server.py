@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import List, Optional
@@ -25,11 +26,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="NuriSection 3D GeoAnalyser", version="1.0", lifespan=lifespan)
 
-# ==== CORS ====
+# ==== SECURITY MIDDLEWARE ====
+# Trusted hosts
+app.add_middleware(
+    TrustedHostMiddleware, 
+    allowed_hosts=["localhost", "127.0.0.1", "*.yourdomain.com"]
+)
+
+# CORS with restrictions
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
