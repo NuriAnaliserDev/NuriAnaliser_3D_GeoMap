@@ -95,7 +95,21 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok"}
+    """Health check endpoint for load balancers and monitoring"""
+    try:
+        # MongoDB connection test
+        await db.command("ping")
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "database": "connected",
+            "version": "1.0"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Service unhealthy: {str(e)}"
+        )
 
 @app.post("/api/auth/register", response_model=Token)
 async def register(user: UserCreate):

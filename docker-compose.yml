@@ -7,7 +7,7 @@ services:
     container_name: nuri3d_mongodb
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"  # Faqat localhost ga ruxsat
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-admin}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-secure_password_2024}

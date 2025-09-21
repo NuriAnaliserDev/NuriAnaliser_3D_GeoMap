@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest --environment jsdom --setupFiles ./vitest.setup.js"
+    "test": "vitest --run"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",
