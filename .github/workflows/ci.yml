@@ -82,7 +82,7 @@ jobs:
         MONGO_URL: mongodb://test:test123@localhost:27017/test_db?authSource=admin
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
         file: ./coverage.xml
         flags: backend
